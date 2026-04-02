@@ -18,20 +18,28 @@
 
 ### Azure リソースのデプロイ
 
-Bicep テンプレートで AI Services アカウント・Foundry プロジェクト・モデルデプロイメントを作成します。
+Bicep テンプレートでリソースグループ・AI Services アカウント・Foundry プロジェクト・モデルデプロイメントをまとめて作成します。
+デプロイのたびに新しい環境が作成されます（リソース名にランダムサフィックスが付与されます）。
 
 ```bash
-# リソースグループ作成
-az group create -n rg-agent-eval-demo -l swedencentral
-
-# デプロイ（モデルはパラメータで変更可能: gpt-5.4, gpt-4.1, gpt-4o 等）
-az deployment group create \
-  -g rg-agent-eval-demo \
+# サブスクリプションスコープでデプロイ（RG・RBAC も自動作成）
+az deployment sub create \
+  -l swedencentral \
   -f infra/main.bicep \
-  -p infra/main.bicepparam
+  -p deployerPrincipalId=$(az ad signed-in-user show --query id -o tsv) \
+  --query properties.outputs -o json
 ```
 
-デプロイ後、出力される `projectEndpoint` を `.env` の `PROJECT_ENDPOINT` に設定してください。
+出力例:
+```json
+{
+  "projectEndpoint": { "value": "https://ai-eval-xxxxx.services.ai.azure.com/api/projects/foundry-agent-eval" },
+  "resourceGroupName": { "value": "rg-agent-eval-demo-xxxxx" },
+  "modelDeploymentName": { "value": "gpt-5.4" }
+}
+```
+
+`projectEndpoint` の値を次のステップで `.env` に設定します。
 
 ### エージェントのセットアップ
 
@@ -39,9 +47,9 @@ az deployment group create \
 # 依存関係のインストール
 pip install -r scripts/requirements.txt
 
-# 環境変数の設定
+# 環境変数の設定（PROJECT_ENDPOINT にデプロイ出力の projectEndpoint を設定）
 cp .env.sample .env
-# .env を編集して PROJECT_ENDPOINT 等を設定
+# .env を編集: PROJECT_ENDPOINT=https://ai-eval-xxxxx.services.ai.azure.com/api/projects/foundry-agent-eval
 
 # エージェント作成（Vector Store + ナレッジアップロード + エージェント）
 python scripts/01_create_agent.py
@@ -53,7 +61,7 @@ python scripts/02_test_agent.py -q "大阪出張の日当はいくら？"
 ## 評価
 
 ```bash
-# バッチ評価（response_completeness / coherence / task_adherence / intent_resolution）
+# バッチ評価（response_completeness / coherence）
 python scripts/03_run_evaluation.py
 ```
 
@@ -73,10 +81,10 @@ python scripts/03_run_evaluation.py
 |----------|------|
 | `scripts/01_create_agent.py` | Vector Store 作成 + ナレッジアップロード + エージェント作成 |
 | `scripts/02_test_agent.py` | エージェントに質問を送って動作確認 |
-| `scripts/03_run_evaluation.py` | バッチ評価（4 評価器） |
+| `scripts/03_run_evaluation.py` | バッチ評価（2 評価器） |
 
 ## 評価データセット
 
 | ファイル | 内容 |
 |----------|------|
-| `.foundry/datasets/accuracy-test.jsonl` | 正確性テスト（12件、query + ground_truth + context） |
+| `.foundry/datasets/accuracy-test.jsonl` | 正確性テスト（6件、query + ground_truth + context） |

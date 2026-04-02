@@ -83,28 +83,6 @@ def create_eval_and_run(client, data_id: str, agent_name: str, eval_name: str):
                 "response": "{{sample.output_text}}",
             },
         },
-        # 指示遵守: エージェントが Instructions に従っているか
-        {
-            "type": "azure_ai_evaluator",
-            "name": "task_adherence",
-            "evaluator_name": "builtin.task_adherence",
-            "initialization_parameters": {"deployment_name": MODEL},
-            "data_mapping": {
-                "query": "{{item.query}}",
-                "response": "{{sample.output_items}}",
-            },
-        },
-        # 意図解決: ユーザーの質問意図に応えているか
-        {
-            "type": "azure_ai_evaluator",
-            "name": "intent_resolution",
-            "evaluator_name": "builtin.intent_resolution",
-            "initialization_parameters": {"deployment_name": MODEL},
-            "data_mapping": {
-                "query": "{{item.query}}",
-                "response": "{{sample.output_text}}",
-            },
-        },
     ]
 
     eval_obj = client.evals.create(
