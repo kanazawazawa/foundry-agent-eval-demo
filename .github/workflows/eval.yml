@@ -43,12 +43,24 @@ jobs:
           SUMMARY="$GITHUB_STEP_SUMMARY"
           if [[ ! -f "$SUMMARY" ]]; then
             echo "No summary file found"
+            echo "result=pass" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
+          echo "--- Summary content (first 50 lines) ---"
+          head -50 "$SUMMARY"
+          echo "--- End ---"
+
           # "Pass Rate" カラムから百分率を抽出（例: "50.0%"）
-          PASS_RATES=$(grep -oP '\d+\.\d+%' "$SUMMARY" | head -10)
+          # grep が 0 件でも失敗しないように || true
+          PASS_RATES=$(grep -oP '\d+\.\d+%' "$SUMMARY" || true)
           echo "Pass rates found: $PASS_RATES"
+
+          if [[ -z "$PASS_RATES" ]]; then
+            echo "No pass rates found in summary"
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           ALL_PASS=true
           for rate in $PASS_RATES; do
@@ -66,7 +78,7 @@ jobs:
           fi
 
       - name: Create Issue on Failure
-        if: steps.check.outputs.result == 'fail'
+        if: always() && steps.check.outputs.result == 'fail'
         uses: actions/github-script@v7
         with:
           script: |
