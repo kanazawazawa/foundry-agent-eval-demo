@@ -38,54 +38,86 @@ jobs:
       - name: Check Pass Rate
         id: check
         shell: bash
+        env:
+          AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
         run: |
-          # GITHUB_STEP_SUMMARY から Pass Rate を抽出して判定
-          SUMMARY="$GITHUB_STEP_SUMMARY"
-          if [[ ! -f "$SUMMARY" ]]; then
-            echo "No summary file found"
-            echo "result=pass" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          python3 << 'PYEOF'
+          import json, os, sys
 
-          echo "--- Summary content (first 50 lines) ---"
-          head -50 "$SUMMARY"
-          echo "--- End ---"
+          from azure.ai.projects import AIProjectClient
+          from azure.identity import DefaultAzureCredential
 
-          # "Pass Rate" カラムから百分率を抽出（例: "50.0%"）
-          # grep が 0 件でも失敗しないように || true
-          PASS_RATES=$(grep -oP '\d+\.\d+%' "$SUMMARY" || true)
-          echo "Pass rates found: $PASS_RATES"
+          endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
+          cred = DefaultAzureCredential()
+          client = AIProjectClient(endpoint=endpoint, credential=cred)
+          oc = client.get_openai_client()
 
-          if [[ -z "$PASS_RATES" ]]; then
-            echo "No pass rates found in summary"
-            echo "result=pass" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          # 最新の Evaluation を取得
+          evals_page = oc.evals.list(limit=1)
+          latest_eval = next(iter(evals_page), None)
+          if not latest_eval:
+              print("No evaluations found")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write("result=pass\n")
+              sys.exit(0)
 
-          ALL_PASS=true
-          for rate in $PASS_RATES; do
-            pct=$(echo "$rate" | tr -d '%')
-            if (( $(echo "$pct < 100.0" | bc -l) )); then
-              echo "FAIL: $rate < 100%"
-              ALL_PASS=false
-            fi
-          done
+          print(f"Latest eval: {latest_eval.id}")
 
-          if [[ "$ALL_PASS" == "false" ]]; then
-            echo "result=fail" >> "$GITHUB_OUTPUT"
-          else
-            echo "result=pass" >> "$GITHUB_OUTPUT"
-          fi
+          # 最新の Run を取得
+          runs_page = oc.evals.runs.list(eval_id=latest_eval.id, limit=1)
+          latest_run = next(iter(runs_page), None)
+          if not latest_run:
+              print("No runs found")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write("result=pass\n")
+              sys.exit(0)
+
+          print(f"Latest run: {latest_run.id}, status: {latest_run.status}")
+
+          # result_counts から pass/fail を判定
+          rc = latest_run.result_counts
+          print(f"Result counts: {rc}")
+
+          passed = rc.get("passed", 0) if isinstance(rc, dict) else getattr(rc, "passed", 0)
+          failed = rc.get("failed", 0) if isinstance(rc, dict) else getattr(rc, "failed", 0)
+          errored = rc.get("errored", 0) if isinstance(rc, dict) else getattr(rc, "errored", 0)
+          total = passed + failed + errored
+
+          # per_testing_criteria_results から詳細を取得
+          criteria = getattr(latest_run, "per_testing_criteria_results", []) or []
+          details = []
+          for c in criteria:
+              c_dict = c if isinstance(c, dict) else (c.__dict__ if hasattr(c, '__dict__') else {})
+              name = c_dict.get("testing_criteria", c_dict.get("name", "unknown"))
+              c_passed = c_dict.get("passed", 0)
+              c_failed = c_dict.get("failed", 0)
+              c_total = c_passed + c_failed
+              rate = (c_passed / c_total * 100) if c_total > 0 else 0
+              details.append(f"  {name}: {c_passed}/{c_total} ({rate:.1f}%)")
+              print(f"  {name}: passed={c_passed}, failed={c_failed}, rate={rate:.1f}%")
+
+          detail_text = "\n".join(details) if details else f"  passed={passed}, failed={failed}"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              if failed > 0:
+                  print(f"FAIL: {passed}/{total} passed, {failed} failed")
+                  f.write("result=fail\n")
+                  f.write(f"summary={passed}/{total} passed, {failed} failed\n")
+                  f.write(f"details<<DELIM\n{detail_text}\nDELIM\n")
+              else:
+                  print(f"PASS: {passed}/{total} passed")
+                  f.write("result=pass\n")
+          PYEOF
 
       - name: Create Issue on Failure
         if: always() && steps.check.outputs.result == 'fail'
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            const summary = fs.readFileSync(process.env.GITHUB_STEP_SUMMARY, 'utf8');
             const agentIds = '${{ inputs.agent-ids }}';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const summary = '${{ steps.check.outputs.summary }}';
+            const details = `${{ steps.check.outputs.details }}`;
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -101,7 +133,11 @@ jobs:
                 ``,
                 `### 評価結果`,
                 ``,
-                summary,
+                `${summary}`,
+                ``,
+                '```',
+                details,
+                '```',
               ].join('\n'),
               labels: ['evaluation']
             });
