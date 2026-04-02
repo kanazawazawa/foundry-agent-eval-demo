@@ -69,11 +69,12 @@ python scripts/03_run_evaluation.py
 
 ### CI/CD（GitHub Actions）
 
-手動トリガーで評価を実行し、失敗時に Issue を自動作成します。
+手動トリガー（`workflow_dispatch`）で評価を実行します。
+結果は Actions の **Summary** タブにレポートとして出力されます。
 
 ```
 .github/workflows/eval.yml   ← ワークフロー定義
-.github/eval-data.json        ← Action 用の評価データ
+.github/eval-data.json        ← Action 用の評価データ（6件 × 2評価器）
 ```
 
 #### 事前設定（GitHub リポジトリ）
@@ -88,6 +89,11 @@ Settings → Variables → Actions に以下を登録:
 | `AZURE_AI_PROJECT_ENDPOINT` | デプロイ出力の `projectEndpoint` |
 
 Azure 側で App Registration に OIDC フェデレーション資格情報と Azure AI User ロールを設定してください。
+
+#### 実行
+
+Actions タブ → "Agent Evaluation" → "Run workflow" で手動実行します。
+実行のたびに Foundry に新しい Evaluation Run が作成され、ポータルの評価タブで時系列の品質推移を確認できます。
 
 ## ナレッジドキュメント
 
