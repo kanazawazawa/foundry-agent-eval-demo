@@ -14,11 +14,26 @@
 ### 前提条件
 
 - Python 3.11+
-- Microsoft Foundry プロジェクト（エンドポイント取得済み）
-- gpt-5.4 モデルがデプロイ済み
 - Azure CLI でログイン済み（`az login`）
 
-### 手順
+### Azure リソースのデプロイ
+
+Bicep テンプレートで AI Services アカウント・Foundry プロジェクト・モデルデプロイメントを作成します。
+
+```bash
+# リソースグループ作成
+az group create -n rg-agent-eval-demo -l swedencentral
+
+# デプロイ（モデルはパラメータで変更可能: gpt-5.4, gpt-4.1, gpt-4o 等）
+az deployment group create \
+  -g rg-agent-eval-demo \
+  -f infra/main.bicep \
+  -p infra/main.bicepparam
+```
+
+デプロイ後、出力される `projectEndpoint` を `.env` の `PROJECT_ENDPOINT` に設定してください。
+
+### エージェントのセットアップ
 
 ```bash
 # 依存関係のインストール
