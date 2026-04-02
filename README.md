@@ -8,6 +8,7 @@
 - **Microsoft Foundry** Prompt Agent（`PromptAgentDefinition`）
 - **file_search** ツールで Vector Store 内のナレッジを検索
 - **gpt-5.4** モデル
+  - gpt-5.4 & gpt-5.4-pro へのアクセスには登録が必要です（2026 年 4 月時点）。詳細は [Models sold directly by Azure](https://learn.microsoft.com/ja-jp/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure?tabs=global-standard-aoai%2Cglobal-standard&pivots=azure-openai#gpt-54) を参照してください。
 
 ## セットアップ
 
