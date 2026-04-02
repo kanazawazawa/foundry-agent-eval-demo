@@ -67,6 +67,28 @@ python scripts/03_run_evaluation.py
 
 評価結果は Foundry Portal の「評価」タブで確認できます。
 
+### CI/CD（GitHub Actions）
+
+手動トリガーで評価を実行し、失敗時に Issue を自動作成します。
+
+```
+.github/workflows/eval.yml   ← ワークフロー定義
+.github/eval-data.json        ← Action 用の評価データ
+```
+
+#### 事前設定（GitHub リポジトリ）
+
+Settings → Variables → Actions に以下を登録:
+
+| Variable | 値 |
+|----------|-----|
+| `AZURE_CLIENT_ID` | App Registration のクライアント ID |
+| `AZURE_TENANT_ID` | テナント ID |
+| `AZURE_SUBSCRIPTION_ID` | サブスクリプション ID |
+| `AZURE_AI_PROJECT_ENDPOINT` | デプロイ出力の `projectEndpoint` |
+
+Azure 側で App Registration に OIDC フェデレーション資格情報と Azure AI User ロールを設定してください。
+
 ## ナレッジドキュメント
 
 | ファイル | 内容 |
