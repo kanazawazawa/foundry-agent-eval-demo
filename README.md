@@ -70,7 +70,8 @@ python scripts/03_run_evaluation.py
 ### CI/CD（GitHub Actions）
 
 手動トリガー（`workflow_dispatch`）で評価を実行します。
-結果は Actions の **Summary** タブにレポートとして出力され、Pass Rate が 100% 未満の場合は GitHub Issue が自動作成されます。
+結果は Actions の **Summary** タブにレポートとして出力され、Pass Rate が 100% 未満の場合は GitHub Issue が自動作成され、Copilot Coding Agent が自動アサインされます。
+Coding Agent が Issue の内容からバグを特定し、修正 PR を Draft で作成します。
 
 ```
 .github/workflows/eval.yml   ← ワークフロー定義
