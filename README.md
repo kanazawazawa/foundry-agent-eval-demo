@@ -96,7 +96,7 @@ Settings → Secrets and variables → Actions に以下を登録:
 
 | Secret | 値 |
 |--------|-----|
-| `REPO_FG_TOKEN` | Fine-grained PAT（権限: Metadata:read, Contents:rw, Issues:rw, Pull requests:rw） |
+| `REPO_FG_TOKEN` | Fine-grained PAT（権限: Metadata:read, Actions:rw, Contents:rw, Issues:rw, Pull requests:rw） |
 
 `REPO_FG_TOKEN` は Copilot Coding Agent を Issue に自動アサインするために必要です。GitHub App トークン（`GITHUB_TOKEN`）では Copilot のアサインができないため、ユーザー PAT を使用します。
 
