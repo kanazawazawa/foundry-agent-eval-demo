@@ -146,8 +146,9 @@ jobs:
 
       - name: Assign Copilot to Issue
         if: always() && steps.create-issue.outputs.issue-number
+        continue-on-error: true
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.REPO_FG_TOKEN }}
         run: |
           gh api \
             --method POST \
